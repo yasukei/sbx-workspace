@@ -2,4 +2,5 @@
 /*
 !/.gitignore
 !/clone-repos.sh
+!/exclude-repos.txt
 !/README.md

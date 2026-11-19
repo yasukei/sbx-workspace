@@ -29,7 +29,8 @@ sbx run shell \
 ### In the sandbox
 
 ```bash
-# Clone all repositories accessible to the authenticated GitHub user
+# Clone all repositories accessible to the authenticated GitHub user,
+# except those listed in exclude-repos.txt
 ./clone-repos.sh
 
 # Check Claude / Codex login status (you should already be logged in via sbx's credential mechanism)

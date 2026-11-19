@@ -3,25 +3,58 @@
 # By default, the list is fetched from the authenticated user's repositories
 # via `gh api /user/repos`, shown, and confirmed with y/N before cloning.
 # Use -f to read the list from a file instead.
+# Repositories listed in the exclude file (default: exclude-repos.txt next to
+# this script, if present) are left out. Entries are owner/name or just name.
 # Repositories whose target directory already exists are skipped.
 #
-# Usage: ./clone-repos.sh [-f repos.txt] [-y] [destination directory]
+# Usage: ./clone-repos.sh [-f repos.txt] [-x exclude.txt] [-y] [destination directory]
 #   -f FILE  Read the repository list from FILE instead of `gh api`
+#   -x FILE  Read the exclude list from FILE (default: exclude-repos.txt)
 #   -y       Skip the confirmation prompt for the `gh api` list
 #   Default destination: the script's own directory
 set -uo pipefail
 
 usage() {
-  echo "Usage: $0 [-f repos.txt] [-y] [destination directory]" >&2
+  echo "Usage: $0 [-f repos.txt] [-x exclude.txt] [-y] [destination directory]" >&2
+}
+
+# Strip comments, whitespace, a GitHub URL prefix and a .git suffix,
+# then lowercase: "https://github.com/Foo/Bar.git # x" -> "foo/bar"
+normalize() {
+  local s="${1%%#*}"
+  s="$(echo "$s" | xargs)"
+  s="${s#https://github.com/}"
+  s="${s#git@github.com:}"
+  s="${s%.git}"
+  echo "${s,,}"
+}
+
+# Print the repositories in $1 that are not listed in the exclude file
+filter_excluded() {
+  local line key ex name
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    key="$(normalize "$line")"
+    [[ -z "$key" ]] && continue
+    name="${key##*/}"
+    for ex in "${excludes[@]}"; do
+      if [[ "$key" == "$ex" || ( "$ex" != */* && "$name" == "$ex" ) ]]; then
+        echo "exclude: $line" >&2
+        continue 2
+      fi
+    done
+    echo "$line"
+  done <<< "$1"
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 list_file=""
+exclude_file=""
 assume_yes=0
 
-while getopts ":f:yh" opt; do
+while getopts ":f:x:yh" opt; do
   case "$opt" in
     f) list_file="$OPTARG" ;;
+    x) exclude_file="$OPTARG" ;;
     y) assume_yes=1 ;;
     h) usage; exit 0 ;;
     :) echo "error: -$OPTARG requires an argument" >&2; usage; exit 1 ;;
@@ -32,17 +65,31 @@ shift $((OPTIND - 1))
 
 dest_dir="${1:-$script_dir}"
 
+excludes=()
+if [[ -n "$exclude_file" && ! -f "$exclude_file" ]]; then
+  echo "error: $exclude_file not found" >&2
+  exit 1
+fi
+exclude_file="${exclude_file:-$script_dir/exclude-repos.txt}"
+if [[ -f "$exclude_file" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    ex="$(normalize "$line")"
+    [[ -n "$ex" ]] && excludes+=("$ex")
+  done < "$exclude_file"
+fi
+
 if [[ -n "$list_file" ]]; then
   if [[ ! -f "$list_file" ]]; then
     echo "error: $list_file not found" >&2
     exit 1
   fi
-  repo_list="$(cat "$list_file")"
+  repo_list="$(filter_excluded "$(cat "$list_file")")"
 else
   if ! repo_list="$(gh api /user/repos --paginate --jq '.[].full_name')"; then
     echo "error: failed to fetch repository list with gh api" >&2
     exit 1
   fi
+  repo_list="$(filter_excluded "$repo_list")"
   if [[ -z "$repo_list" ]]; then
     echo "No repositories found."
     exit 0

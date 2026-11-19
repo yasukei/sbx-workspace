@@ -1,0 +1,3 @@
+# Repositories that clone-repos.sh should not clone.
+# One per line: owner/name or just name. Lines starting with # are comments.
+yasukei/sbx-workspace
