@@ -1,0 +1,5 @@
+# Ignore everything by default; allow only the files listed below
+/*
+!/.gitignore
+!/clone-repos.sh
+!/README.md
