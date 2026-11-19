@@ -17,8 +17,8 @@ cd sbx-workspace
 # Start a new sandbox in clone mode
 sbx run shell \
   --clone \
-  --kit sbx/claude-mixin --kit-arg claude-mixin.model=opus --kit-arg claude-mixin.reasoningEffort=high \
-  --kit sbx/codex-mixin --kit-arg codex-mixin.model=gpt-6.2-sol --kit-arg codex-mixin.reasoningEffort=high \
+  --kit sbx/claude-mixin \
+  --kit sbx/codex-mixin \
   --kit "git+https://github.com/yasukei/sbx-kits.git#dir=base" \
   --kit "git+https://github.com/yasukei/sbx-kits.git#dir=network" \
   --kit "git+https://github.com/yasukei/sbx-kits.git#dir=claude-config" \
@@ -32,15 +32,15 @@ sbx run shell \
 # Clone all repositories accessible to the authenticated GitHub user
 ./clone-repos.sh
 
-# Log in to Claude
-claude auth status --text     # Check login status
-claude auth login --claudeai  # Log in if not already logged in
-
-# Log in to Codex
-codex login status            # Check login status
-codex login                   # Log in if not already logged in
+# Check Claude / Codex login status (you should already be logged in via sbx's credential mechanism)
+claude auth status --text
+codex login status
 
 # Set up yasukei/agent-skills
 #   Claude: /plugin -> loaded automatically from claude.ai
 #   Codex:  /plugins -> add 'yasukei/agent-skills' via 'Add Marketplace' -> install the plugin
+
+# Set the default model and effort level
+#   Claude: /model and /effort
+#   Codex:  /model
 ```
