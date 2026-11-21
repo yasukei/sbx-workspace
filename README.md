@@ -46,3 +46,14 @@ codex login status
 #   Claude: /model and /effort
 #   Codex:  /model
 ```
+
+## Tests
+
+`tests/test-clone-repos.sh` tests `clone-repos.sh` offline: it uses local
+repositories via `file://` URLs and a stub `gh`, so no network access or
+GitHub login is needed. It also runs [ShellCheck](https://www.shellcheck.net/),
+which must be installed (e.g. `apt install shellcheck`).
+
+```bash
+tests/test-clone-repos.sh
+```
