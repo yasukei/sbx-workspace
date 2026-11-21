@@ -5,7 +5,10 @@
 # Use -f to read the list from a file instead.
 # Repositories listed in the exclude file (default: exclude-repos.txt next to
 # this script, if present) are left out. Entries are owner/name or just name.
-# Repositories whose target directory already exists are skipped.
+# Repositories whose target directory already exists are not cloned again:
+# they are updated with `git fetch --prune`, and additionally with
+# `git pull --ff-only` when main is checked out and the working tree is clean
+# (no modified, staged or untracked files).
 #
 # Usage: ./clone-repos.sh [-f repos.txt] [-x exclude.txt] [-y] [destination directory]
 #   -f FILE  Read the repository list from FILE instead of `gh api`
@@ -96,6 +99,7 @@ else
   fi
 
   echo "Repositories to clone into $dest_dir:"
+  # shellcheck disable=SC2001  # prefixes every line, not one substitution
   echo "$repo_list" | sed 's/^/  /'
   echo "Total: $(echo "$repo_list" | wc -l)"
 
@@ -113,7 +117,48 @@ else
   fi
 fi
 
-cloned=0 skipped=0 failed=0
+cloned=0 updated=0 skipped=0 failed=0
+
+# Update an already-cloned repository: always `git fetch --prune`, and
+# fast-forward pull only when main is checked out with a clean working tree
+update_existing() {
+  local repo="$1" target="$2" branch
+  # The target must be the top level of its own work tree; a plain directory
+  # inside another repository (e.g. the default destination) does not count
+  if [[ ! -d "$target" ]] ||
+    [[ "$(git -C "$target" rev-parse --show-toplevel 2> /dev/null)" != "$(cd "$target" && pwd -P)" ]]; then
+    echo "skip:  $repo ($target exists but is not a git repository)"
+    skipped=$((skipped + 1))
+    return
+  fi
+
+  echo "fetch: $repo ($target)"
+  if ! git -C "$target" fetch --prune < /dev/null; then
+    echo "error: failed to fetch $repo" >&2
+    failed=$((failed + 1))
+    return
+  fi
+
+  branch="$(git -C "$target" symbolic-ref --quiet --short HEAD)"
+  if [[ "$branch" != "main" ]]; then
+    echo "skip:  $repo (not pulled: on '${branch:-detached HEAD}', not main)"
+    skipped=$((skipped + 1))
+    return
+  fi
+  if [[ -n "$(git -C "$target" status --porcelain)" ]]; then
+    echo "skip:  $repo (not pulled: working tree has changes)"
+    skipped=$((skipped + 1))
+    return
+  fi
+
+  echo "pull:  $repo"
+  if git -C "$target" pull --ff-only < /dev/null; then
+    updated=$((updated + 1))
+  else
+    echo "error: failed to pull $repo (not a fast-forward?)" >&2
+    failed=$((failed + 1))
+  fi
+}
 
 while IFS= read -r line || [[ -n "$line" ]]; do
   # Strip comments (after #) and surrounding whitespace; ignore empty lines
@@ -126,8 +171,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   target="$dest_dir/$name"
 
   if [[ -e "$target" ]]; then
-    echo "skip:  $repo ($target already exists)"
-    skipped=$((skipped + 1))
+    update_existing "$repo" "$target"
     continue
   fi
 
@@ -147,5 +191,5 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   fi
 done <<< "$repo_list"
 
-echo "Done: cloned=$cloned skipped=$skipped failed=$failed"
+echo "Done: cloned=$cloned updated=$updated skipped=$skipped failed=$failed"
 [[ $failed -eq 0 ]]

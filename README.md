@@ -34,7 +34,8 @@ sbx run shell \
 
 ```bash
 # Clone all repositories accessible to the authenticated GitHub user,
-# except those listed in exclude-repos.txt
+# except those listed in exclude-repos.txt.
+# Already-cloned ones are fetched (--prune), and pulled if on a clean main
 ./clone-repos.sh
 
 # Check Claude / Codex login status (you should already be logged in via sbx's credential mechanism)
@@ -48,4 +49,15 @@ codex login status
 # Set the default model and effort level
 #   Claude: /model and /effort
 #   Codex:  /model
+```
+
+## Tests
+
+`tests/test-clone-repos.sh` tests `clone-repos.sh` offline: it uses local
+repositories via `file://` URLs and a stub `gh`, so no network access or
+GitHub login is needed. It also runs [ShellCheck](https://www.shellcheck.net/),
+which must be installed (e.g. `apt install shellcheck`).
+
+```bash
+tests/test-clone-repos.sh
 ```
