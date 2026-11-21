@@ -214,6 +214,25 @@ assert_status 0
 assert_output "exists but is not a git repository"
 assert_output "Done: cloned=0 updated=0 skipped=1 failed=0"
 
+begin "non-git directory inside a destination that is itself a repository is skipped"
+# Like the default setup, where the destination is the sbx-workspace clone:
+# the parent repository must not be fetched or pulled in place of the target
+make_remote parent
+make_remote alpha
+rmdir "$case_dir/dest"
+git clone -q "$(remote_url parent)" "$case_dir/dest"
+echo "/alpha/" > "$case_dir/dest/.git/info/exclude"
+mkdir "$case_dir/dest/alpha"
+old_head="$(git -C "$case_dir/dest" rev-parse HEAD)"
+advance_remote parent
+remote_url alpha > "$case_dir/list.txt"
+run -f "$case_dir/list.txt" "$case_dir/dest"
+assert_status 0
+assert_output "exists but is not a git repository"
+assert_no_output "pull:"
+assert_head "$case_dir/dest" "$old_head" "parent repository not pulled"
+assert_output "Done: cloned=0 updated=0 skipped=1 failed=0"
+
 # --- exclude list ----------------------------------------------------------
 
 begin "exclude list matches owner/name, bare name, case and URL forms"

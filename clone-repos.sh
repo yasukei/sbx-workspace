@@ -123,7 +123,10 @@ cloned=0 updated=0 skipped=0 failed=0
 # fast-forward pull only when main is checked out with a clean working tree
 update_existing() {
   local repo="$1" target="$2" branch
-  if [[ ! -d "$target" ]] || ! git -C "$target" rev-parse --is-inside-work-tree &> /dev/null; then
+  # The target must be the top level of its own work tree; a plain directory
+  # inside another repository (e.g. the default destination) does not count
+  if [[ ! -d "$target" ]] ||
+    [[ "$(git -C "$target" rev-parse --show-toplevel 2> /dev/null)" != "$(cd "$target" && pwd -P)" ]]; then
     echo "skip:  $repo ($target exists but is not a git repository)"
     skipped=$((skipped + 1))
     return
