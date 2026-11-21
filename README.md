@@ -15,6 +15,8 @@ gh repo clone yasukei/sbx-workspace
 cd sbx-workspace
 
 # Start a new sandbox in clone mode
+DOCKER_SANDBOXES_ROOT_SIZE=40g \
+DOCKER_SANDBOXES_DOCKER_SIZE=20g \
 sbx run shell \
   --clone \
   --kit sbx/claude-mixin \
@@ -23,6 +25,8 @@ sbx run shell \
   --kit "git+https://github.com/yasukei/sbx-kits.git#dir=network" \
   --kit "git+https://github.com/yasukei/sbx-kits.git#dir=claude-config" \
   --kit "git+https://github.com/yasukei/sbx-kits.git#dir=codex-config" \
+  --cpus 8 \
+  --memory 32g \
   --name "sbx-workspace-$(date +%Y%m%d)"
 ```
 
