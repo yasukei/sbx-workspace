@@ -30,7 +30,8 @@ sbx run shell \
 
 ```bash
 # Clone all repositories accessible to the authenticated GitHub user,
-# except those listed in exclude-repos.txt
+# except those listed in exclude-repos.txt.
+# Already-cloned ones are fetched (--prune), and pulled if on a clean main
 ./clone-repos.sh
 
 # Check Claude / Codex login status (you should already be logged in via sbx's credential mechanism)
